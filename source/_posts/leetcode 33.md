@@ -6,7 +6,7 @@ tags:
 
 [leetcode](https://leetcode.com/problems/search-in-rotated-sorted-array/description/)
 
-![2025-12-08T105733](2025-12-08T105733.png)
+![2025-12-08T110127](2025-12-08T110127.png)
 
 This is quite an interesting question, as it doesn't follow the standard divide and conquer structure. 
 
