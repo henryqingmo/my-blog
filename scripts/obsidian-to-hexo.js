@@ -184,8 +184,46 @@ function transformBody(body, vaultRoot, imagesDir) {
   return { body: finalBody, imagesToCopy, inlineTags };
 }
 
-function scanVault(vaultRoot) { return []; }
-function processNote(filePath, config) { return { published: false, reason: 'stub' }; }
+function scanVault(vaultRoot) {
+  const results = [];
+  const SKIP = new Set(['.obsidian', '.trash', '.git', 'Assets', 'Templates',
+                        'copilot-custom-prompts', '.claude', 'node_modules']);
+  function walk(dir) {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (SKIP.has(entry.name)) continue;
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.name.endsWith('.md')) results.push(full);
+    }
+  }
+  walk(vaultRoot);
+  return results;
+}
+
+function processNote(filePath, config) {
+  const raw = fs.readFileSync(filePath, 'utf8');
+  const { frontmatter, body } = parseFrontmatter(raw);
+
+  if (!isPublishable(frontmatter, body, config.publishTag)) {
+    return { published: false, reason: 'no publish tag' };
+  }
+
+  const stem  = path.basename(filePath, '.md');
+  const slug  = toSlug(stem);
+  const stat  = fs.statSync(filePath);
+  const date  = formatDate(stat.birthtime, config.timezoneOffset);
+  const { body: converted, imagesToCopy, inlineTags } = transformBody(body, config.vaultRoot, config.imagesDir);
+  const allTags = [...new Set([...extractTags(frontmatter, body, config.publishTag), ...inlineTags])];
+  const fm    = buildFrontmatter(stem, date, allTags);
+  const output = fm + converted;
+
+  fs.mkdirSync(config.postsDir,  { recursive: true });
+  fs.mkdirSync(config.imagesDir, { recursive: true });
+  for (const { src, dest } of imagesToCopy) fs.copyFileSync(src, dest);
+  fs.writeFileSync(path.join(config.postsDir, `${slug}.md`), output, 'utf8');
+
+  return { published: true, slug, imagesCopied: imagesToCopy.length };
+}
 
 function main(config) {
   const files = scanVault(config.vaultRoot);
