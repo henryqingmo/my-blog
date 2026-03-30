@@ -124,3 +124,53 @@ test('buildFrontmatter: quotes title containing colon', () => {
   const result = buildFrontmatter('Gradient Descent: An Overview', '2026-01-01T00:00:00+11:00', []);
   assert.ok(result.includes('title: "Gradient Descent: An Overview"'));
 });
+
+// ── stripPdfEmbeds ────────────────────────────────────────────────────────
+
+test('stripPdfEmbeds: removes ![[file.pdf#page=N]]', () => {
+  const result = stripPdfEmbeds('See ![[COMP3411 Week 2.pdf#page=1]] here.');
+  assert.equal(result, 'See  here.');
+});
+
+test('stripPdfEmbeds: removes bare PDF wikilinks with alias', () => {
+  assert.equal(stripPdfEmbeds('[[foo.pdf#page=54&rect=1,2,3,4|foo, p.54]]'), '');
+});
+
+test('stripPdfEmbeds: leaves non-PDF content untouched', () => {
+  const input = '![[image.png]] and text';
+  assert.equal(stripPdfEmbeds(input), '![[image.png]] and text');
+});
+
+// ── convertCallouts ───────────────────────────────────────────────────────
+
+test('convertCallouts: callout without title', () => {
+  assert.equal(convertCallouts('>[!note]\n>content here'), '> **NOTE**\n> content here');
+});
+
+test('convertCallouts: callout with title', () => {
+  assert.equal(convertCallouts('>[!summary] Key insight\n>body'), '> **SUMMARY: Key insight**\n> body');
+});
+
+test('convertCallouts: space-prefix variant > [!note]', () => {
+  const result = convertCallouts('> [!note] \n> content');
+  assert.equal(result, '> **NOTE**\n> content');
+});
+
+test('convertCallouts: leaves regular blockquotes untouched', () => {
+  const input = '> This is a regular blockquote';
+  assert.equal(convertCallouts(input), '> This is a regular blockquote');
+});
+
+test('convertCallouts: callout ends at empty line', () => {
+  const input = '>[!note]\n>inside\n\noutside';
+  const result = convertCallouts(input);
+  assert.ok(result.includes('> **NOTE**'));
+  assert.ok(result.includes('> inside'));
+  assert.ok(result.endsWith('\n\noutside'));
+});
+
+test('convertCallouts: multi-line callout preserved', () => {
+  const input = '>[!note]\n>line one\n>line two';
+  const result = convertCallouts(input);
+  assert.equal(result, '> **NOTE**\n> line one\n> line two');
+});

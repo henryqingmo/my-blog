@@ -79,8 +79,41 @@ function buildFrontmatter(title, date, tags) {
 }
 
 // ── Syntax converters ─────────────────────────────────────────────────────
-function stripPdfEmbeds(body) { return body; }
-function convertCallouts(body) { return body; }
+function stripPdfEmbeds(body) {
+  return body
+    .replace(/!\[\[[^\]]*\.pdf[^\]]*\]\]/gi, '')
+    .replace(/\[\[[^\]]*\.pdf[^\]]*\]\]/gi, '');
+}
+
+function convertCallouts(body) {
+  const lines = body.split('\n');
+  const out = [];
+  let inCallout = false;
+
+  for (const line of lines) {
+    const norm = line.replace(/^>>/g, '>'); // flatten nested >>
+    if (!inCallout) {
+      const m = norm.match(/^>\s*\[!(\w+)\]\s*(.*)$/);
+      if (m) {
+        const type = m[1].toUpperCase();
+        const title = m[2].trim();
+        out.push(`> ${title ? `**${type}: ${title}**` : `**${type}**`}`);
+        inCallout = true;
+      } else {
+        out.push(line);
+      }
+    } else {
+      if (/^>\s?/.test(norm)) {
+        out.push(`> ${norm.replace(/^>\s?/, '')}`);
+      } else {
+        inCallout = false;
+        out.push(line);
+      }
+    }
+  }
+  return out.join('\n');
+}
+
 function convertImageEmbeds(body, vaultRoot, imagesDir) { return { transformed: body, imagesToCopy: [] }; }
 function convertWikilinks(body) { return body; }
 function stripInlineHashtags(body) { return { transformed: body, tags: [] }; }
