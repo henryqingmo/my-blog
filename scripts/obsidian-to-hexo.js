@@ -33,12 +33,49 @@ function isPublishable(frontmatter, body, publishTag = 'publish') {
   return re.test(body);
 }
 
-function extractTags(frontmatter, body, publishTag) { return []; }
+function extractTags(frontmatter, body, publishTag = 'publish') {
+  const tags = new Set();
+  if (frontmatter && Array.isArray(frontmatter.tags)) {
+    frontmatter.tags.forEach(t => { if (String(t) !== publishTag) tags.add(String(t)); });
+  }
+  // Strip code blocks before scanning inline tags
+  const cleanBody = body
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/`[^`]+`/g, '');
+  const re = /(?<!\S)#([a-zA-Z][a-zA-Z0-9_/]*)/g;
+  let m;
+  while ((m = re.exec(cleanBody)) !== null) {
+    if (m[1] !== publishTag) tags.add(m[1]);
+  }
+  return [...tags];
+}
 
 // ── Metadata ──────────────────────────────────────────────────────────────
-function toSlug(stem) { return stem; }
-function formatDate(date, timezoneOffset) { return ''; }
-function buildFrontmatter(title, date, tags) { return ''; }
+function toSlug(stem) {
+  return stem
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+function formatDate(date, timezoneOffset) {
+  const sign = timezoneOffset[0] === '+' ? 1 : -1;
+  const [h, m] = timezoneOffset.slice(1).split(':').map(Number);
+  const local = new Date(date.getTime() + sign * (h * 60 + m) * 60 * 1000);
+  const p = n => String(n).padStart(2, '0');
+  return `${local.getUTCFullYear()}-${p(local.getUTCMonth()+1)}-${p(local.getUTCDate())}` +
+         `T${p(local.getUTCHours())}:${p(local.getUTCMinutes())}:${p(local.getUTCSeconds())}${timezoneOffset}`;
+}
+function buildFrontmatter(title, date, tags) {
+  const lines = ['---', `title: ${title}`, `date: ${date}`];
+  if (tags.length > 0) {
+    lines.push('tags:');
+    tags.forEach(t => lines.push(`  - ${t}`));
+  }
+  lines.push('---', '');
+  return lines.join('\n') + '\n';
+}
 
 // ── Syntax converters ─────────────────────────────────────────────────────
 function stripPdfEmbeds(body) { return body; }
