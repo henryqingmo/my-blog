@@ -114,7 +114,31 @@ function convertCallouts(body) {
   return out.join('\n');
 }
 
-function convertImageEmbeds(body, vaultRoot, imagesDir) { return { transformed: body, imagesToCopy: [] }; }
+function convertImageEmbeds(body, vaultRoot, imagesDir) {
+  const imagesToCopy = [];
+  const imgRe = /!\[\[([^\]]+\.(?:png|jpg|jpeg|gif|webp))\]\]/gi;
+
+  const transformed = body.replace(imgRe, (_, rawPath) => {
+    const basename = path.basename(rawPath);
+    // Candidates: Assets/Pictures/<basename>, vault/<rawPath>, Assets/Pictures/<rawPath>
+    const candidates = [
+      path.join(vaultRoot, 'Assets', 'Pictures', basename),
+      path.join(vaultRoot, rawPath),
+      path.join(vaultRoot, 'Assets', 'Pictures', rawPath),
+    ];
+    const src = candidates.find(p => fs.existsSync(p));
+    if (!src) {
+      console.warn(`  WARNING: image not found: ${rawPath}`);
+      return '';
+    }
+    const dest = path.join(imagesDir, basename);
+    imagesToCopy.push({ src, dest });
+    // URL-encode filename for safe use in markdown href
+    return `![${basename}](/images/${encodeURIComponent(basename)})`;
+  });
+
+  return { transformed, imagesToCopy };
+}
 
 function convertWikilinks(body) {
   return body
