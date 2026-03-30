@@ -115,8 +115,38 @@ function convertCallouts(body) {
 }
 
 function convertImageEmbeds(body, vaultRoot, imagesDir) { return { transformed: body, imagesToCopy: [] }; }
-function convertWikilinks(body) { return body; }
-function stripInlineHashtags(body) { return { transformed: body, tags: [] }; }
+
+function convertWikilinks(body) {
+  return body
+    // [[Note|Alias]] or [[Note#Section|Alias]] → Alias
+    .replace(/\[\[[^\]|]*\|([^\]]+)\]\]/g, '$1')
+    // [[Note#Section]] → Note  (drop anchor)
+    .replace(/\[\[([^\]#|]+)#[^\]]*\]\]/g, '$1')
+    // [[Note]] → Note
+    .replace(/\[\[([^\]|#]+)\]\]/g, '$1');
+}
+
+function stripInlineHashtags(body) {
+  const tags = new Set();
+  // Protect code fences and inline code with placeholders
+  const fences = [], inlines = [];
+  let s = body
+    .replace(/```[\s\S]*?```/g, m => { fences.push(m); return `\x00F${fences.length-1}\x00`; })
+    .replace(/`[^`]+`/g, m => { inlines.push(m); return `\x00I${inlines.length-1}\x00`; });
+
+  // Match #word where word starts immediately (not headings: "# Title" has a space)
+  s = s.replace(/(?<!\S)#([a-zA-Z][a-zA-Z0-9_/\-]*)/g, (_, tag) => { tags.add(tag); return ''; });
+
+  // Restore placeholders
+  s = s
+    .replace(/\x00F(\d+)\x00/g, (_, i) => fences[i])
+    .replace(/\x00I(\d+)\x00/g, (_, i) => inlines[i]);
+
+  // Clean trailing whitespace on lines that held only tags
+  s = s.replace(/[ \t]+(\n|$)/gm, '$1');
+
+  return { transformed: s, tags: [...tags] };
+}
 
 // ── Orchestration ─────────────────────────────────────────────────────────
 function transformBody(body, vaultRoot, imagesDir) {

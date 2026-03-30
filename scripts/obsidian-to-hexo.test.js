@@ -174,3 +174,50 @@ test('convertCallouts: multi-line callout preserved', () => {
   const result = convertCallouts(input);
   assert.equal(result, '> **NOTE**\n> line one\n> line two');
 });
+
+// ── convertWikilinks ──────────────────────────────────────────────────────
+
+test('convertWikilinks: [[Note|Alias]] → Alias', () => {
+  assert.equal(convertWikilinks('[[Estimator#MSE|Mean Square Error]]'), 'Mean Square Error');
+});
+
+test('convertWikilinks: [[Note#Section]] → Note', () => {
+  assert.equal(convertWikilinks('[[Normal Distribution#Properties]]'), 'Normal Distribution');
+});
+
+test('convertWikilinks: [[Note]] → Note', () => {
+  assert.equal(convertWikilinks('[[Maximum Likelihood Estimator]]'), 'Maximum Likelihood Estimator');
+});
+
+test('convertWikilinks: path wikilink with alias', () => {
+  assert.equal(
+    convertWikilinks('[[Machine Learning/Supervised/Random Forest|Random Forest]]'),
+    'Random Forest'
+  );
+});
+
+// ── stripInlineHashtags ───────────────────────────────────────────────────
+
+test('stripInlineHashtags: removes tags and returns them', () => {
+  const { transformed, tags } = stripInlineHashtags('text here\n#coding #math');
+  assert.ok(!transformed.includes('#coding'));
+  assert.ok(tags.includes('coding') && tags.includes('math'));
+});
+
+test('stripInlineHashtags: does not strip markdown headings', () => {
+  const { transformed } = stripInlineHashtags('# Heading\n## Sub\n### Deep');
+  assert.ok(transformed.includes('# Heading'));
+  assert.ok(transformed.includes('## Sub'));
+});
+
+test('stripInlineHashtags: does not strip tags inside code fences', () => {
+  const input = '```\n#math is not a tag\n```';
+  const { transformed, tags } = stripInlineHashtags(input);
+  assert.ok(transformed.includes('#math'));
+  assert.equal(tags.length, 0);
+});
+
+test('stripInlineHashtags: handles slash tags', () => {
+  const { tags } = stripInlineHashtags('#machine_learning/supervised');
+  assert.ok(tags.includes('machine_learning/supervised'));
+});
