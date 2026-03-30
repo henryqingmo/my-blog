@@ -112,10 +112,15 @@ test('formatDate: crosses midnight boundary correctly', () => {
 
 test('buildFrontmatter: produces correct YAML block', () => {
   const result = buildFrontmatter('Cost Function', '2025-09-16T13:47:44+11:00', ['machine_learning']);
-  assert.equal(result, '---\ntitle: Cost Function\ndate: 2025-09-16T13:47:44+11:00\ntags:\n  - machine_learning\n---\n\n');
+  assert.equal(result, '---\ntitle: "Cost Function"\ndate: 2025-09-16T13:47:44+11:00\ntags:\n  - machine_learning\n---\n\n');
 });
 
 test('buildFrontmatter: omits tags block when empty', () => {
   const result = buildFrontmatter('My Note', '2026-01-01T00:00:00+11:00', []);
   assert.ok(!result.includes('tags:'));
+});
+
+test('buildFrontmatter: quotes title containing colon', () => {
+  const result = buildFrontmatter('Gradient Descent: An Overview', '2026-01-01T00:00:00+11:00', []);
+  assert.ok(result.includes('title: "Gradient Descent: An Overview"'));
 });

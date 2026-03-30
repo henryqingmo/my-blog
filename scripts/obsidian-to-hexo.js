@@ -42,7 +42,7 @@ function extractTags(frontmatter, body, publishTag = 'publish') {
   const cleanBody = body
     .replace(/```[\s\S]*?```/g, '')
     .replace(/`[^`]+`/g, '');
-  const re = /(?<!\S)#([a-zA-Z][a-zA-Z0-9_/]*)/g;
+  const re = /(?<!\S)#([a-zA-Z][a-zA-Z0-9_/\-]*)/g;
   let m;
   while ((m = re.exec(cleanBody)) !== null) {
     if (m[1] !== publishTag) tags.add(m[1]);
@@ -68,7 +68,8 @@ function formatDate(date, timezoneOffset) {
          `T${p(local.getUTCHours())}:${p(local.getUTCMinutes())}:${p(local.getUTCSeconds())}${timezoneOffset}`;
 }
 function buildFrontmatter(title, date, tags) {
-  const lines = ['---', `title: ${title}`, `date: ${date}`];
+  const safeTitle = title.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  const lines = ['---', `title: "${safeTitle}"`, `date: ${date}`];
   if (tags.length > 0) {
     lines.push('tags:');
     tags.forEach(t => lines.push(`  - ${t}`));
