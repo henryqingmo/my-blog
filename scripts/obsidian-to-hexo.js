@@ -213,7 +213,7 @@ function processNote(filePath, config) {
   const stat  = fs.statSync(filePath);
   const date  = formatDate(stat.birthtime, config.timezoneOffset);
   const { body: converted, imagesToCopy, inlineTags } = transformBody(body, config.vaultRoot, config.imagesDir);
-  const allTags = [...new Set([...extractTags(frontmatter, body, config.publishTag), ...inlineTags])];
+  const allTags = [...new Set([...extractTags(frontmatter, body, config.publishTag), ...inlineTags.filter(t => t !== config.publishTag)])];
   const fm    = buildFrontmatter(stem, date, allTags);
   const output = fm + converted;
 

@@ -298,7 +298,8 @@ test('processNote: publishes note with inline #publish tag', () => {
     assert.ok(written.includes('title: "My Note"'));
     assert.ok(written.includes('tags:'));
     assert.ok(written.includes('- math'));
-    assert.ok(!written.includes('#publish'));
+    assert.ok(!written.includes('- publish'));   // publishTag must not appear in tags
+    assert.ok(!written.includes('#publish'));     // publishTag must not appear in body
   } finally {
     fs.rmSync(tmp, { recursive: true });
   }
