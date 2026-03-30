@@ -53,3 +53,7 @@ test('isPublishable: does not match #publishing (not an exact tag)', () => {
 test('isPublishable: true with null frontmatter and inline tag', () => {
   assert.equal(isPublishable(null, '#publish', 'publish'), true);
 });
+
+test('isPublishable: does not match #publish-notes (hyphenated tag)', () => {
+  assert.equal(isPublishable(null, '#publish-notes', 'publish'), false);
+});
