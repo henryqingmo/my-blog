@@ -7,7 +7,11 @@ const {
   toSlug, formatDate, buildFrontmatter,
   stripPdfEmbeds, convertCallouts,
   convertWikilinks, stripInlineHashtags,
+  scanVault, processNote,
 } = require('./obsidian-to-hexo');
+const fs   = require('fs');
+const path = require('path');
+const os   = require('os');
 
 // ── parseFrontmatter ──────────────────────────────────────────────────────
 
@@ -220,4 +224,82 @@ test('stripInlineHashtags: does not strip tags inside code fences', () => {
 test('stripInlineHashtags: handles slash tags', () => {
   const { tags } = stripInlineHashtags('#machine_learning/supervised');
   assert.ok(tags.includes('machine_learning/supervised'));
+});
+
+// ── scanVault ─────────────────────────────────────────────────────────────
+
+test('scanVault: returns .md files, skips system dirs', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'vault-test-'));
+  try {
+    // Create a note and a skipped directory
+    fs.writeFileSync(path.join(tmp, 'note.md'), '# Note');
+    fs.mkdirSync(path.join(tmp, '.obsidian'));
+    fs.writeFileSync(path.join(tmp, '.obsidian', 'config.md'), '{}');
+    fs.mkdirSync(path.join(tmp, 'Assets'));
+    fs.writeFileSync(path.join(tmp, 'Assets', 'image-ref.md'), '# img');
+
+    const files = scanVault(tmp);
+    assert.equal(files.length, 1);
+    assert.ok(files[0].endsWith('note.md'));
+  } finally {
+    fs.rmSync(tmp, { recursive: true });
+  }
+});
+
+test('scanVault: recurses into non-skipped subdirectories', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'vault-test-'));
+  try {
+    fs.mkdirSync(path.join(tmp, 'Math'));
+    fs.writeFileSync(path.join(tmp, 'Math', 'Calculus.md'), '# Calc');
+    fs.writeFileSync(path.join(tmp, 'index.md'), '# Index');
+
+    const files = scanVault(tmp);
+    assert.equal(files.length, 2);
+  } finally {
+    fs.rmSync(tmp, { recursive: true });
+  }
+});
+
+// ── processNote ───────────────────────────────────────────────────────────
+
+test('processNote: skips note without publish tag', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'note-test-'));
+  try {
+    const notePath = path.join(tmp, 'My Note.md');
+    fs.writeFileSync(notePath, '### Idea\nSome content here.\n#math');
+    const config = {
+      vaultRoot: tmp, postsDir: path.join(tmp, 'posts'),
+      imagesDir: path.join(tmp, 'images'), timezoneOffset: '+11:00', publishTag: 'publish',
+    };
+    const result = processNote(notePath, config);
+    assert.equal(result.published, false);
+    assert.equal(result.reason, 'no publish tag');
+  } finally {
+    fs.rmSync(tmp, { recursive: true });
+  }
+});
+
+test('processNote: publishes note with inline #publish tag', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'note-test-'));
+  try {
+    const notePath = path.join(tmp, 'My Note.md');
+    fs.writeFileSync(notePath, '### Idea\nSome content.\n#publish #math');
+    const postsDir  = path.join(tmp, 'posts');
+    const imagesDir = path.join(tmp, 'images');
+    const config = {
+      vaultRoot: tmp, postsDir, imagesDir,
+      timezoneOffset: '+11:00', publishTag: 'publish',
+    };
+    const result = processNote(notePath, config);
+    assert.equal(result.published, true);
+    assert.equal(result.slug, 'my-note');
+    assert.ok(fs.existsSync(path.join(postsDir, 'my-note.md')));
+    const written = fs.readFileSync(path.join(postsDir, 'my-note.md'), 'utf8');
+    assert.ok(written.includes('title: "My Note"'));
+    assert.ok(written.includes('tags:'));
+    assert.ok(written.includes('- math'));
+    assert.ok(!written.includes('#publish'));
+  } finally {
+    fs.rmSync(tmp, { recursive: true });
+  }
 });

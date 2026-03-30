@@ -247,4 +247,5 @@ module.exports = {
   toSlug, formatDate, buildFrontmatter,
   stripPdfEmbeds, convertCallouts, convertImageEmbeds,
   convertWikilinks, stripInlineHashtags,
+  scanVault, processNote,
 };
