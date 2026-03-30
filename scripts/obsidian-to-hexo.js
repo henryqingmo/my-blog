@@ -13,8 +13,26 @@ const CONFIG = {
 };
 
 // ── Parsing ───────────────────────────────────────────────────────────────
-function parseFrontmatter(rawContent) { return { frontmatter: null, body: rawContent }; }
-function isPublishable(frontmatter, body, publishTag) { return false; }
+function parseFrontmatter(rawContent) {
+  const match = rawContent.match(/^---\r?\n([\s\S]*?)\r?\n?---\r?\n?([\s\S]*)$/);
+  if (!match) return { frontmatter: null, body: rawContent };
+  try {
+    const frontmatter = yaml.load(match[1]) || {};
+    return { frontmatter, body: match[2] };
+  } catch {
+    return { frontmatter: null, body: rawContent };
+  }
+}
+
+function isPublishable(frontmatter, body, publishTag = 'publish') {
+  if (frontmatter && Array.isArray(frontmatter.tags) && frontmatter.tags.includes(publishTag)) {
+    return true;
+  }
+  // Match standalone #publish (not #publishing) — preceded by whitespace or start
+  const re = new RegExp(`(?<!\\S)#${publishTag}(?![a-zA-Z0-9_/])`, 'g');
+  return re.test(body);
+}
+
 function extractTags(frontmatter, body, publishTag) { return []; }
 
 // ── Metadata ──────────────────────────────────────────────────────────────
