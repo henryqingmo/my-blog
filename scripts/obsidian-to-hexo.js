@@ -143,7 +143,7 @@ function stripInlineHashtags(body) {
     .replace(/\x00I(\d+)\x00/g, (_, i) => inlines[i]);
 
   // Clean trailing whitespace on lines that held only tags
-  s = s.replace(/[ \t]+(\n|$)/gm, '$1');
+  s = s.replace(/[ \t]+(\r?\n|$)/gm, '$1');
 
   return { transformed: s, tags: [...tags] };
 }
