@@ -126,7 +126,7 @@ function convertImageEmbeds(body, vaultRoot, imagesDir) {
       path.join(vaultRoot, rawPath),
       path.join(vaultRoot, 'Assets', 'Pictures', rawPath),
     ];
-    const src = candidates.find(p => fs.existsSync(p));
+    const src = candidates.find(c => fs.existsSync(c));
     if (!src) {
       console.warn(`  WARNING: image not found: ${rawPath}`);
       return '';
